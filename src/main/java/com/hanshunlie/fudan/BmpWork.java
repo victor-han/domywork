@@ -1,8 +1,9 @@
 package com.hanshunlie.fudan;
 
+import scala.collection.mutable.StringBuilder;
+
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-import java.nio.file.Paths;
 
 /**
  * @Author shunlie
@@ -38,7 +39,8 @@ import java.nio.file.Paths;
  */
 public class BmpWork {
 
-    public static String path = "/Users/victor/Downloads/fudan/test1/demo.bmp";
+    //    public static String path = "/Users/victor/Downloads/fudan/test1/demo.bmp";
+    public static String path = "/Users/shunlie/Downloads/fudan/test1/demo.bmp";
 
     // 文件头
     Filehead filehead = new Filehead();
@@ -48,6 +50,11 @@ public class BmpWork {
     byte[] mapinfoByte = new byte[40];
     MapInfohead mapInfohead = new MapInfohead();
 
+    // 彩色板
+    byte[] colorByte;
+//    MapInfohead mapInfohead = new MapInfohead();
+
+    //图片数据
     Rgb rgb;
 
     public static void main(String[] args) throws Exception {
@@ -73,15 +80,23 @@ public class BmpWork {
         unpackMapInfo(mapinfoByte);
 
 
-        uppackRgb(bis);
-        System.err.println(rgb.toString());
-
         double imageSize = (double) filehead.bfSize / 1024 / 1024;
         Double imageSize2 = Double.valueOf(String.format("%.3f", imageSize));
         System.err.println("图像的大小：" + imageSize2 + " MB");
         System.err.println("像素点个数：" + mapInfohead.biHeight * mapInfohead.biWidth);
         System.err.println("长：" + mapInfohead.biHeight + ", 宽：" + mapInfohead.biWidth);
         System.err.println("色深：" + mapInfohead.biBitCount + "位，所以是" + (int) Math.pow(2, mapInfohead.biBitCount) + "色");
+
+
+        int colorSize = (int) Math.pow(2, mapInfohead.biBitCount);
+        colorByte = new byte[colorSize * 4];
+        //读取1024位，256色图像为1024字节
+        bis.read(colorByte, 0, colorSize * 4);
+
+        uppackRgb(bis);
+        System.err.println(rgb.print(0,200,100,200));
+//        System.err.println(rgb.toString());
+
 
     }
 
@@ -134,8 +149,8 @@ public class BmpWork {
         rgb = new Rgb(width, height);
         //字节填充
         int skip_width = 0;
-        //bmp图像区域的大小必须为4的倍数，而他以三个字节存储一个像素，读的时候应该应该跳过补上的o
-        int m = width * 3 % 4;
+        //bmp图像区域的大小必须为4的倍数，而256色以1个字节存储一个像素，读的时候应该应该跳过补上的o
+        int m = width * 1 % 4;
         if (m != 0) {
             skip_width = 4 - m;
         }
@@ -146,7 +161,7 @@ public class BmpWork {
                 rgb.green[i][j] = bis.read();
                 rgb.red[i][j] = bis.read();
                 //灰度值计算公式 ： BYTE Gray = (BYTE)(0.3f*R+0.59f*G+0.11f*B);
-                rgb.gray[i][j] = (int)(0.11f * rgb.blue[i][j] + 0.59f * rgb.green[i][j] + 0.3f*rgb.red[i][j]);
+                rgb.gray[i][j] = (int) (0.11f * rgb.blue[i][j] + 0.59f * rgb.green[i][j] + 0.3f * rgb.red[i][j]);
                 if (j == 0) {
                     bis.skip(skip_width);
                 }
@@ -239,11 +254,22 @@ public class BmpWork {
             for (int i = 0; i < heigh; i++) {
                 for (int j = 0; j < width; j++) {
 //                    stringBuilder.append(String.format("(%03d,%03d,%03d)", red[i][j], green[i][j], blue[i][j]));
-                    stringBuilder.append(String.format("(%03d)",green[i][j]));
+                    stringBuilder.append(String.format("(%03d)", green[i][j]));
                 }
                 stringBuilder.append("\n");
             }
             return stringBuilder.toString();
+        }
+
+        public String print(int widthBegin, int widthEnd, int heightBegin, int heightEnd) {
+            StringBuffer sb = new StringBuffer();
+            for (int i = widthBegin; i < widthEnd; i++) {
+                for (int j = heightBegin; j < heightEnd; j++) {
+                    sb.append(String.format("(%03d)", green[i][j]));
+                }
+                sb.append("\n");
+            }
+            return sb.toString();
         }
     }
 
