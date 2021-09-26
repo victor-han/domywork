@@ -1,8 +1,9 @@
 package com.hanshunlie.fudan;
 
-import scala.collection.mutable.StringBuilder;
-
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 
 /**
@@ -10,7 +11,7 @@ import java.io.FileInputStream;
  * @Date 2021/9/23 6:48 下午
  * 编写程序实现BMP图像的读取和参数获得。对于给定图像，
  * 编写程序
- * 1、读取BMP图像的像素点灰度值，
+ * 1、读取BMP图像的像素点灰度值，像素点灰度值：(输出第0行-200行，100-200列的灰度值)
  * 2、返回该图像的文件大小，
  * 3、像素点的个数，
  * 4、以及长度和高度。
@@ -52,10 +53,6 @@ public class BmpWork {
 
     // 彩色板
     byte[] colorByte;
-//    MapInfohead mapInfohead = new MapInfohead();
-
-    //图片数据
-    Rgb rgb;
 
     public static void main(String[] args) throws Exception {
         BmpWork bw = new BmpWork();
@@ -90,16 +87,36 @@ public class BmpWork {
 
         int colorSize = (int) Math.pow(2, mapInfohead.biBitCount);
         colorByte = new byte[colorSize * 4];
-        //读取1024位，256色图像为1024字节
+        //彩色表，读取1024位，256色图像为1024字节
         bis.read(colorByte, 0, colorSize * 4);
 
-        uppackRgb(bis);
-        System.err.println(rgb.print(0,200,100,200));
-//        System.err.println(rgb.toString());
 
+        System.err.println("-------------------灰度值------------------------");
+        //读取灰度值直接用imageIO类, 像素点灰度值：(输出第0行-200行，100-200列的灰度值)
+        BufferedImage read = ImageIO.read(new File(path));
+        StringBuffer sb =new StringBuffer();
+        for (int i = 0; i < 100; i++) {
+            sb.append("第" + i + "行：");
+            for (int j = 100; j < 200; j++) {
+                int rgb = read.getRGB(i, j);
+                //三色相等，直接取后八位
+                int gray = getGray(rgb);
+                sb.append(gray).append(",");
+            }
+            sb.append("\n");
+        }
+        System.err.println(sb.toString());
 
     }
 
+    public int getGray(int rgb) {
+        int a = rgb & 0xff000000;//将最高位（24-31）的信息（alpha通道）存储到a变量
+        int r = (rgb & 0xff0000 ) >> 16;//取出次高位（16-23）红色分量的信息
+        int g = (rgb & 0xff00 ) >> 8 ;//取出中位（8-15）绿色分量的信息
+        int b = (rgb & 0xff );//取出低位（0-7）蓝色分量的信息
+//        return a | (rgb << 16) | (rgb << 8) | rgb;//将灰度值送入各个颜色分量
+        return (r+g+b)/3;//将灰度值送入各个颜色分量
+    }
 
     private Filehead unpackFileHead(byte[] fileheadByte) {
         //2位
@@ -143,31 +160,6 @@ public class BmpWork {
         return mapInfohead;
     }
 
-    public void uppackRgb(BufferedInputStream bis) throws Exception {
-        int width = mapInfohead.biWidth;
-        int height = mapInfohead.biHeight;
-        rgb = new Rgb(width, height);
-        //字节填充
-        int skip_width = 0;
-        //bmp图像区域的大小必须为4的倍数，而256色以1个字节存储一个像素，读的时候应该应该跳过补上的o
-        int m = width * 1 % 4;
-        if (m != 0) {
-            skip_width = 4 - m;
-        }
-        for (int i = height - 1; i >= 0; i--) {
-            for (int j = 0; j < width; j++) {
-
-                rgb.blue[i][j] = bis.read();
-                rgb.green[i][j] = bis.read();
-                rgb.red[i][j] = bis.read();
-                //灰度值计算公式 ： BYTE Gray = (BYTE)(0.3f*R+0.59f*G+0.11f*B);
-                rgb.gray[i][j] = (int) (0.11f * rgb.blue[i][j] + 0.59f * rgb.green[i][j] + 0.3f * rgb.red[i][j]);
-                if (j == 0) {
-                    bis.skip(skip_width);
-                }
-            }
-        }
-    }
 
     /**
      * 4 字节转int
@@ -230,48 +222,7 @@ public class BmpWork {
         int biClrImportant;
     }
 
-    class Rgb {
-        int[][] red;
-        int[][] green;
-        int[][] blue;
-        int[][] gray;
-        int width;
-        int heigh;
 
-        Rgb(int width, int heigh) {
-            this.width = width;
-            this.heigh = heigh;
-            red = new int[heigh][width];
-            green = new int[heigh][width];
-            blue = new int[heigh][width];
-            gray = new int[heigh][width];
-        }
-
-        @Override
-        public String toString() {
-            // 输出rgb矩阵
-            StringBuilder stringBuilder = new StringBuilder();
-            for (int i = 0; i < heigh; i++) {
-                for (int j = 0; j < width; j++) {
-//                    stringBuilder.append(String.format("(%03d,%03d,%03d)", red[i][j], green[i][j], blue[i][j]));
-                    stringBuilder.append(String.format("(%03d)", green[i][j]));
-                }
-                stringBuilder.append("\n");
-            }
-            return stringBuilder.toString();
-        }
-
-        public String print(int widthBegin, int widthEnd, int heightBegin, int heightEnd) {
-            StringBuffer sb = new StringBuffer();
-            for (int i = widthBegin; i < widthEnd; i++) {
-                for (int j = heightBegin; j < heightEnd; j++) {
-                    sb.append(String.format("(%03d)", green[i][j]));
-                }
-                sb.append("\n");
-            }
-            return sb.toString();
-        }
-    }
 
 }
 
